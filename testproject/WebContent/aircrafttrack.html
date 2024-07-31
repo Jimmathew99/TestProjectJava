@@ -26,11 +26,11 @@
                 zoom: 5
             });
             fetchAircraftData(); // Initial fetch
-            setInterval(fetchAircraftData, 5000); // Fetch every 5 seconds
+            setInterval(fetchAircraftData, 120000); 
         }
 
         function fetchAircraftData() {
-            fetch('/testproject/api/aircrafts')
+            fetch('/testproject/api/aircrafts') // Update the endpoint if necessary
                 .then(response => response.json())
                 .then(data => {
                     if (data.error) {
@@ -56,8 +56,8 @@
                         position: {lat: latitude, lng: longitude},
                         map: map,
                         icon: {
-                            url: 'images/plane-icon.png',
-                            scaledSize: new google.maps.Size(40, 40)
+                            url: 'images/airplane.png', 
+                            scaledSize: new google.maps.Size(32, 32)
                         },
                         title: `Aircraft ${id}`
                     });

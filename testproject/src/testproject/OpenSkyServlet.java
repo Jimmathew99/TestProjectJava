@@ -27,8 +27,24 @@ public class OpenSkyServlet extends HttpServlet {
 
         PrintWriter out = resp.getWriter();
         StringBuilder result = new StringBuilder();
+
         try {
-            URL url = new URL(ROOT_URL + "/states/all");
+            // Read bounding box parameters from request
+            String lamin = req.getParameter("lamin");
+            String lomin = req.getParameter("lomin");
+            String lamax = req.getParameter("lamax");
+            String lomax = req.getParameter("lomax");
+
+            // Construct the API URL with bounding box parameters
+            StringBuilder urlBuilder = new StringBuilder(ROOT_URL + "/states/all");
+            if (lamin != null && lomin != null && lamax != null && lomax != null) {
+                urlBuilder.append("?lamin=").append(lamin)
+                          .append("&lomin=").append(lomin)
+                          .append("&lamax=").append(lamax)
+                          .append("&lomax=").append(lomax);
+            }
+
+            URL url = new URL(urlBuilder.toString());
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("GET");
 
