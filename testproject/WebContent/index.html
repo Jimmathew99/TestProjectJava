@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenSky API Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        #state-vectors {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>OpenSky API Demo</h1>
+    <div id="state-vectors"></div>
+
+    <script>
+        // Define the BoundingBox class in JavaScript
+        class BoundingBox {
+            constructor(minLatitude, maxLatitude, minLongitude, maxLongitude) {
+                this.minLatitude = minLatitude;
+                this.maxLatitude = maxLatitude;
+                this.minLongitude = minLongitude;
+                this.maxLongitude = maxLongitude;
+            }
+
+            getMinLatitude() {
+                return this.minLatitude;
+            }
+
+            getMaxLatitude() {
+                return this.maxLatitude;
+            }
+
+            getMinLongitude() {
+                return this.minLongitude;
+            }
+
+            getMaxLongitude() {
+                return this.maxLongitude;
+            }
+        }
+
+        // Function to fetch data with bounding box parameters
+        function fetchStateVectors(boundingBox) {
+            const url = `https://opensky-network.org/api/states/all?lamin=${boundingBox.getMinLatitude()}&lomin=${boundingBox.getMinLongitude()}&lamax=${boundingBox.getMaxLatitude()}&lomax=${boundingBox.getMaxLongitude()}`;
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    const stateVectors = data.states;
+                    const stateVectorsHtml = stateVectors.map(stateVector => {
+                        return `
+                            <div>
+                                <h2>Aircraft ${stateVector[0]}</h2>
+                                <p>Longitude: ${stateVector[5]}</p>
+                                <p>Latitude: ${stateVector[6]}</p>
+                                <p>Altitude: ${stateVector[7]}</p>
+                            </div>
+                        `;
+                    }).join('');
+
+                    document.getElementById('state-vectors').innerHTML = stateVectorsHtml;
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        // Define your bounding box
+        const boundingBox = new BoundingBox(8.4079, 37.0902, 68.1627, 97.3447);
+
+        // Fetch state vectors using the bounding box
+        fetchStateVectors(boundingBox);
+    </script>
+</body>
+</html>
