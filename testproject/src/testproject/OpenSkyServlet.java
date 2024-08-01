@@ -1,10 +1,12 @@
 package testproject;
-
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -20,6 +22,7 @@ public class OpenSkyServlet extends HttpServlet {
 
     private static final String ROOT_URL = "https://opensky-network.org/api";
     private static final Logger LOGGER = Logger.getLogger(OpenSkyServlet.class.getName());
+    private final PhotoCache photoCache = new PhotoCache(); // Cache instance
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -79,5 +82,45 @@ public class OpenSkyServlet extends HttpServlet {
             out.flush();
             out.close();
         }
+    }
+
+    private String getAircraftPhoto(String hexCode) throws IOException, JSONException {
+        String cachedPhotoUrl = photoCache.get(hexCode);
+        if (cachedPhotoUrl != null) {
+            return cachedPhotoUrl;
+        }
+
+        String photoUrl = "";
+        try {
+            URL url = new URL("https://api.planespotters.net/pub/photos/hex/" + hexCode);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+
+            int responseCode = connection.getResponseCode();
+            if (responseCode == 200) {
+                BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+                StringBuilder responseBuilder = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    responseBuilder.append(line);
+                }
+                reader.close();
+
+                JSONObject responseJson = new JSONObject(responseBuilder.toString());
+                if (responseJson.has("photos")) {
+                    JSONArray photos = responseJson.getJSONArray("photos");
+                    if (photos.length() > 0) {
+                        JSONObject photo = photos.getJSONObject(0);
+                        photoUrl = photo.getJSONObject("thumbnail").getString("src");
+                        photoCache.put(hexCode, photoUrl); // Cache the photo URL
+                    }
+                }
+            } else {
+                LOGGER.log(Level.WARNING, "Failed to retrieve photo. Response code: {0}", responseCode);
+            }
+        } catch (Exception ex) {
+            LOGGER.log(Level.SEVERE, "Error retrieving aircraft photo", ex);
+        }
+        return photoUrl;
     }
 }

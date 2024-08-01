@@ -67,49 +67,71 @@
                 const latitude = aircraft[6];
                 const longitude = aircraft[5];
                 const altitude = aircraft[7];
+                const hexCode = aircraft[0];
 
-                if (!aircraftMarkers[id]) {
-                    const marker = L.marker([latitude, longitude], {
-                        icon: L.icon({
-                            iconUrl: 'images/airplane.png',
-                            iconSize: [32, 32]
-                        }),
-                        title: `Aircraft ${id}`
-                    }).addTo(map);
+                getAircraftPhoto(hexCode).then(photoUrl => {
+                    if (!aircraftMarkers[id]) {
+                        const marker = L.marker([latitude, longitude], {
+                            icon: L.icon({
+                                iconUrl: 'images/airplane.png',
+                                iconSize: [32, 32]
+                            }),
+                            title: `Aircraft ${id}`
+                        }).addTo(map);
 
-                    const infoWindowContent = `
-                        <div class="card">
-                            <img src="https://via.placeholder.com/150" alt="Aircraft ${id}">
-                            <div class="card-body">
-                                <strong>Aircraft ${id}</strong><br>
-                                Latitude: ${latitude}<br>
-                                Longitude: ${longitude}<br>
-                                Altitude: ${altitude}
-                            </div>
-                        </div>`;
-                    marker.bindPopup(infoWindowContent);
+                        const infoWindowContent = `
+                            <div class="card">
+                                <img src="${photoUrl || 'images/default.png'}" alt="Aircraft ${id}">
+                                <div class="card-body">
+                                    <strong>Aircraft ${id}</strong><br>
+                                    Latitude: ${latitude}<br>
+                                    Longitude: ${longitude}<br>
+                                    Altitude: ${altitude}
+                                </div>
+                            </div>`;
+                        marker.bindPopup(infoWindowContent);
 
-                    aircraftMarkers[id] = marker;
-                } else {
-                    const marker = aircraftMarkers[id];
-                    const newPosition = [latitude, longitude];
-                    marker.setLatLng(newPosition);
-                    marker.setPopupContent(`
-                        <div class="card">
-                            <img src="https://via.placeholder.com/150" alt="Aircraft ${id}">
-                            <div class="card-body">
-                                <strong>Aircraft ${id}</strong><br>
-                                Latitude: ${latitude}<br>
-                                Longitude: ${longitude}<br>
-                                Altitude: ${altitude}
-                            </div>
-                        </div>`);
-                }
+                        aircraftMarkers[id] = marker;
+                    } else {
+                        const marker = aircraftMarkers[id];
+                        const newPosition = [latitude, longitude];
+                        marker.setLatLng(newPosition);
+                        marker.setPopupContent(`
+                            <div class="card">
+                                <img src="${photoUrl || 'images/default.png'}" alt="Aircraft ${id}">
+                                <div class="card-body">
+                                    <strong>Aircraft ${id}</strong><br>
+                                    Latitude: ${latitude}<br>
+                                    Longitude: ${longitude}<br>
+                                    Altitude: ${altitude}
+                                </div>
+                            </div>`);
+                    }
+                });
             });
         }
 
+        function getAircraftPhoto(hexCode) {
+            const url = `https://api.planespotters.net/pub/photos/hex/${hexCode}`;
+            return fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.photos && data.photos.length > 0) {
+                        const photo = data.photos[0];
+                        // Return the large thumbnail URL if available, otherwise return the regular thumbnail URL
+                        return photo.thumbnail_large ? photo.thumbnail_large.src : photo.thumbnail.src;
+                    } else {
+                        return null;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error retrieving aircraft photo:', error);
+                    return null;
+                });
+        }
+
         fetchAircraftData(); // Initial fetch
-        setInterval(fetchAircraftData, 1200000); // Fetch data every 2 minutes
+        setInterval(fetchAircraftData, 200000); // Fetch data every 20 minutes
     </script>
 </body>
 </html>
