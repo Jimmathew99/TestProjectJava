@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.Base64;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -13,11 +14,18 @@ public class OpenSkyAPI {
     private static final Logger LOGGER = Logger.getLogger(OpenSkyAPI.class.getName());
 
     public static void main(String[] args) {
+        String username = "thejimmyboy8";
+        String password = "10151999Cs";
+
         try {
-            // Retrieve all state vectors
-            URL url = new URL(ROOT_URL + "/states/all");
+            URL url = new URL(ROOT_URL + "/states/all?lamin=45.8389&lomin=5.9962&lamax=47.8229&lomax=10.5226");
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("GET");
+
+            // Add basic authentication header
+            String auth = username + ":" + password;
+            String encodedAuth = Base64.getEncoder().encodeToString(auth.getBytes());
+            connection.setRequestProperty("Authorization", "Basic " + encodedAuth);
 
             int responseCode = connection.getResponseCode();
             if (responseCode == 200) {

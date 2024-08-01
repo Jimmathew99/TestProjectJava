@@ -11,6 +11,7 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.Base64;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -35,6 +36,9 @@ public class OpenSkyServlet extends HttpServlet {
             String lamax = req.getParameter("lamax");
             String lomax = req.getParameter("lomax");
 
+            LOGGER.log(Level.INFO, "Bounding Box Parameters - lamin: {0}, lomin: {1}, lamax: {2}, lomax: {3}",
+                    new Object[]{lamin, lomin, lamax, lomax});
+
             // Construct the API URL with bounding box parameters
             StringBuilder urlBuilder = new StringBuilder(ROOT_URL + "/states/all");
             if (lamin != null && lomin != null && lamax != null && lomax != null) {
@@ -47,6 +51,13 @@ public class OpenSkyServlet extends HttpServlet {
             URL url = new URL(urlBuilder.toString());
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("GET");
+
+            // Add basic authentication header
+            String username = "thejimmyboy8";
+            String password = "10151999Cs";
+            String auth = username + ":" + password;
+            String encodedAuth = Base64.getEncoder().encodeToString(auth.getBytes());
+            connection.setRequestProperty("Authorization", "Basic " + encodedAuth);
 
             int responseCode = connection.getResponseCode();
             if (responseCode == 200) {

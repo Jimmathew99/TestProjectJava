@@ -2,7 +2,7 @@
 <html>
 <head>
     <title>Aircraft Tracker</title>
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBEniBNlvvxqPCjeQTkSjb3lu6McZ2LBL0"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <style>
         #map {
             height: 100%;
@@ -12,25 +12,42 @@
             margin: 0;
             padding: 0;
         }
+        .card {
+            max-width: 300px;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .card img {
+            max-width: 100%;
+            border-radius: 5px;
+        }
+        .card .card-body {
+            padding: 10px;
+        }
     </style>
 </head>
 <body>
     <div id="map"></div>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script>
-        let map;
+        let map = L.map('map').setView([20.5937, 78.9629], 5);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
         let aircraftMarkers = {};
 
-        function initMap() {
-            map = new google.maps.Map(document.getElementById('map'), {
-                center: {lat: 20.5937, lng: 78.9629},
-                zoom: 5
-            });
-            fetchAircraftData(); // Initial fetch
-            setInterval(fetchAircraftData, 120000); 
-        }
-
         function fetchAircraftData() {
-            fetch('/testproject/api/aircrafts') // Update the endpoint if necessary
+            const lamin = 6.0; // Example values, replace with actual coordinates
+            const lomin = 68.0;
+            const lamax = 37.0;
+            const lomax = 97.0;
+
+            const url = `/testproject/api/aircrafts?lamin=${lamin}&lomin=${lomin}&lamax=${lamax}&lomax=${lomax}`;
+            
+            fetch(url)
                 .then(response => response.json())
                 .then(data => {
                     if (data.error) {
@@ -52,41 +69,47 @@
                 const altitude = aircraft[7];
 
                 if (!aircraftMarkers[id]) {
-                    const marker = new google.maps.Marker({
-                        position: {lat: latitude, lng: longitude},
-                        map: map,
-                        icon: {
-                            url: 'images/airplane.png', 
-                            scaledSize: new google.maps.Size(32, 32)
-                        },
+                    const marker = L.marker([latitude, longitude], {
+                        icon: L.icon({
+                            iconUrl: 'images/airplane.png',
+                            iconSize: [32, 32]
+                        }),
                         title: `Aircraft ${id}`
-                    });
+                    }).addTo(map);
 
-                    const infoWindow = new google.maps.InfoWindow({
-                        content: `
-                            <div>
+                    const infoWindowContent = `
+                        <div class="card">
+                            <img src="https://via.placeholder.com/150" alt="Aircraft ${id}">
+                            <div class="card-body">
                                 <strong>Aircraft ${id}</strong><br>
                                 Latitude: ${latitude}<br>
                                 Longitude: ${longitude}<br>
                                 Altitude: ${altitude}
-                            </div>`
-                    });
-
-                    marker.addListener('click', () => {
-                        infoWindow.open(map, marker);
-                    });
+                            </div>
+                        </div>`;
+                    marker.bindPopup(infoWindowContent);
 
                     aircraftMarkers[id] = marker;
                 } else {
                     const marker = aircraftMarkers[id];
-                    const newPosition = new google.maps.LatLng(latitude, longitude);
-                    marker.setPosition(newPosition);
-                    marker.setTitle(`Aircraft ${id} - Altitude: ${altitude}`);
+                    const newPosition = [latitude, longitude];
+                    marker.setLatLng(newPosition);
+                    marker.setPopupContent(`
+                        <div class="card">
+                            <img src="https://via.placeholder.com/150" alt="Aircraft ${id}">
+                            <div class="card-body">
+                                <strong>Aircraft ${id}</strong><br>
+                                Latitude: ${latitude}<br>
+                                Longitude: ${longitude}<br>
+                                Altitude: ${altitude}
+                            </div>
+                        </div>`);
                 }
             });
         }
 
-        google.maps.event.addDomListener(window, 'load', initMap);
+        fetchAircraftData(); // Initial fetch
+        setInterval(fetchAircraftData, 1200000); // Fetch data every 2 minutes
     </script>
 </body>
 </html>
