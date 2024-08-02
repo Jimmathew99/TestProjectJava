@@ -28,7 +28,7 @@
         .card-body {
             padding: 1rem;
         }
-        
+        /* Hide the default Leaflet popup container styles */
         .leaflet-popup-content-wrapper {
             background: none;
             border: none;
@@ -86,6 +86,9 @@
                 const longitude = aircraft[5];
                 const altitude = aircraft[7];
                 const hexCode = aircraft[0];
+                const origin_country=aircraft[2];
+                const velocity=aircraft[9];
+                const callsign=aircraft[1];
 
                 getAircraftPhoto(hexCode).then(photoUrl => {
                     if (!aircraftMarkers[id]) {
@@ -102,9 +105,12 @@
                                 <img src="${photoUrl || 'images/default.png'}" class="card-img-top" alt="Aircraft ${id}" onerror="this.onerror=null;this.src='images/default.png';">
                                 <div class="card-body">
                                     <h5 class="card-title">Aircraft ${id}</h5>
+                                    <p class="card-text">Origin Country: ${origin_country}</p>
                                     <p class="card-text">Latitude: ${latitude}</p>
                                     <p class="card-text">Longitude: ${longitude}</p>
                                     <p class="card-text">Altitude: ${altitude}</p>
+                                    <p class="card-text">Velocity: ${velocity}</p>
+                                    <p class="card-text">Callsign: ${callsign}</p>
                                 </div>
                             </div>`;
                         marker.bindPopup(infoWindowContent);
@@ -122,6 +128,8 @@
                                     <p class="card-text">Latitude: ${latitude}</p>
                                     <p class="card-text">Longitude: ${longitude}</p>
                                     <p class="card-text">Altitude: ${altitude}</p>
+                                    <p class="card-text">Velocity: ${velocity}</p>
+									<p class="card-text">Callsign: ${callsign}</p>
                                 </div>
                             </div>`);
                     }
@@ -148,7 +156,7 @@
         }
 
         fetchAircraftData(); // Initial fetch
-        setInterval(fetchAircraftData, 200000); // Fetch data every 20 minutes
+        setInterval(fetchAircraftData, 180000); // Fetch every 3 minutes
     </script>
 </body>
 </html>
