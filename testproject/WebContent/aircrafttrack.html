@@ -43,12 +43,18 @@
         .leaflet-popup-close-button {
             display: none;
         }
+        .airplane-icon {
+            width: 32px;
+            height: 32px;
+            background-size: cover;
+        }
     </style>
 </head>
 <body>
     <div id="map"></div>
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    
     <script>
         let map = L.map('map').setView([20.5937, 78.9629], 5);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -86,23 +92,33 @@
                 const longitude = aircraft[5];
                 const altitude = aircraft[7];
                 const hexCode = aircraft[0];
-                const origin_country=aircraft[2];
-                const velocity=aircraft[9];
-                const callsign=aircraft[1];
+                const origin_country = aircraft[2];
+                const velocity = aircraft[9];
+                const callsign = aircraft[1];
+                const true_track = aircraft[10] || 0; // Default to 0 if true_track is null
 
                 getAircraftPhoto(hexCode).then(photoUrl => {
+                    const iconUrl = altitude === 0 ? 'images/airplane-landed.png' : 'images/airplane.png';
+
+                    const iconHtml = `
+                        <div class="airplane-icon" style="background-image: url(${iconUrl}); transform: rotate(${true_track}deg);"></div>
+                    `;
+
                     if (!aircraftMarkers[id]) {
+                        // Create a new marker with a rotated icon
                         const marker = L.marker([latitude, longitude], {
-                            icon: L.icon({
-                                iconUrl: 'images/airplane.png',
-                                iconSize: [32, 32]
+                            icon: L.divIcon({
+                                className: 'airplane-icon-container',
+                                html: iconHtml,
+                                iconSize: [32, 32],
+                                iconAnchor: [16, 16]
                             }),
                             title: `Aircraft ${id}`
                         }).addTo(map);
 
                         const infoWindowContent = `
                             <div class="card text-bg-dark">
-                                <img src="${photoUrl || 'images/default.png'}" class="card-img-top" alt="Aircraft ${id}" onerror="this.onerror=null;this.src='images/default.png';">
+                                <img src="${photoUrl || 'images/default.png'}" class="card-img-top" alt="Aircraft ${callsign}" onerror="this.onerror=null;this.src='images/default.png';">
                                 <div class="card-body">
                                     <h5 class="card-title">Aircraft ${id}</h5>
                                     <p class="card-text">Origin Country: ${origin_country}</p>
@@ -111,25 +127,35 @@
                                     <p class="card-text">Altitude: ${altitude}</p>
                                     <p class="card-text">Velocity: ${velocity}</p>
                                     <p class="card-text">Callsign: ${callsign}</p>
+                                    <p class="card-text">true_track: ${true_track}</p>
                                 </div>
                             </div>`;
                         marker.bindPopup(infoWindowContent);
 
                         aircraftMarkers[id] = marker;
                     } else {
+                        // Update an existing marker
                         const marker = aircraftMarkers[id];
                         const newPosition = [latitude, longitude];
                         marker.setLatLng(newPosition);
+
+                        marker.setIcon(L.divIcon({
+                            className: 'airplane-icon-container',
+                            html: iconHtml,
+                            iconSize: [32, 32],
+                            iconAnchor: [16, 16]
+                        }));
+
                         marker.setPopupContent(`
                             <div class="card text-bg-dark">
-                                <img src="${photoUrl || 'images/default.png'}" class="card-img-top" alt="Aircraft ${id}" onerror="this.onerror=null;this.src='images/default.png';">
+                                <img src="${photoUrl || 'images/default.png'}" class="card-img-top" alt="Aircraft ${callsign}" onerror="this.onerror=null;this.src='images/default.png';">
                                 <div class="card-body">
                                     <h5 class="card-title">Aircraft ${id}</h5>
                                     <p class="card-text">Latitude: ${latitude}</p>
                                     <p class="card-text">Longitude: ${longitude}</p>
                                     <p class="card-text">Altitude: ${altitude}</p>
                                     <p class="card-text">Velocity: ${velocity}</p>
-									<p class="card-text">Callsign: ${callsign}</p>
+                                    <p class="card-text">Callsign: ${callsign}</p>
                                 </div>
                             </div>`);
                     }
@@ -156,7 +182,7 @@
         }
 
         fetchAircraftData(); // Initial fetch
-        setInterval(fetchAircraftData, 180000); // Fetch every 3 minutes
+        setInterval(fetchAircraftData, 10000); // Fetch every 3 minutes
     </script>
 </body>
 </html>
