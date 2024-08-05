@@ -26,14 +26,6 @@
             object-fit: cover; /* Ensure image covers the container */
             position: relative;
         }
-        .card-img-top .spinner-container {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 1;
-            display: none;
-        }
         .card-body {
             padding: 1rem;
         }
@@ -57,20 +49,10 @@
             height: 32px;
             background-size: cover;
         }
-        .spinner-border {
-            width: 3rem;
-            height: 3rem;
-            border-width: 0.4em;
-        }
     </style>
 </head>
 <body>
     <div id="map"></div>
-    <div class="spinner-container" id="loadingSpinner">
-        <div class="spinner-border" role="status">
-            <span class="visually-hidden">Loading...</span>
-        </div>
-    </div>
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     
@@ -81,6 +63,8 @@
         }).addTo(map);
 
         let aircraftMarkers = {};
+        let aircraftPaths = {};
+        let polylineVisible = {}; // To track visibility of each polyline
 
         function fetchAircraftData() {
             const lamin = 6.0; // Coordinates covering India
@@ -89,9 +73,6 @@
             const lomax = 97.0;
 
             const url = `/testproject/api/aircrafts?lamin=${lamin}&lomin=${lomin}&lamax=${lamax}&lomax=${lomax}`;
-            
-            // Show loading spinner
-            document.getElementById('loadingSpinner').style.display = 'block';
 
             fetch(url)
                 .then(response => response.json())
@@ -104,10 +85,6 @@
                 })
                 .catch(error => {
                     console.error('Error fetching aircraft data:', error);
-                })
-                .finally(() => {
-                    // Hide loading spinner
-                    document.getElementById('loadingSpinner').style.display = 'none';
                 });
         }
 
@@ -124,10 +101,8 @@
                 const true_track = aircraft[10] || 0; // Default to 0 if true_track is null
 
                 getAircraftPhoto(hexCode).then(photoUrl => {
-                    const iconUrl = altitude === 0 ? 'images/airplane-landed.png' : 'images/airplane.png';
-
                     const iconHtml = `
-                        <div class="airplane-icon" style="background-image: url(${iconUrl}); transform: rotate(${true_track}deg);"></div>
+                        <div class="airplane-icon" style="background-image: url(images/airplane.png); transform: rotate(${true_track}deg);"></div>
                     `;
 
                     if (!aircraftMarkers[id]) {
@@ -145,13 +120,6 @@
                         const infoWindowContent = `
                             <div class="card text-bg-dark">
                                 <div class="card-img-top">
-                                    <div class="spinner-container">
-                                        <div class="spinner-border" role="status">
-                                            <span class="visually-hidden">Loading...</span>
-                                        </div>
-                                    </div>
-                                    <img src="${photoUrl || 'images/default.png'}" class="card-img-top" alt="Aircraft ${callsign}" onerror="this.onerror=null;this.src='images/default.png';">
-                                </div
                                     <img src="${photoUrl || 'images/default.png'}" class="card-img-top" alt="Aircraft ${callsign}" onerror="this.onerror=null;this.src='images/default.png';">
                                 </div>
                                 <div class="card-body">
@@ -169,38 +137,87 @@
                         `;
                         marker.bindPopup(infoWindowContent);
 
+                        // Track visibility status
+                        polylineVisible[id] = false;
+
+                        marker.on('click', function() {
+                            if (polylineVisible[id]) {
+                                // Hide polyline
+                                map.removeLayer(aircraftPaths[id]);
+                                polylineVisible[id] = false;
+                            } else {
+                                // Show polyline
+                                aircraftPaths[id].addTo(map);
+                                polylineVisible[id] = true;
+                            }
+                        });
+
                         aircraftMarkers[id] = marker;
+
+                        // Create a new polyline for the aircraft path
+                        aircraftPaths[id] = L.polyline([[latitude, longitude]], { color: 'blue' });
+                        console.log(`New polyline created for aircraft ${id} at [${latitude}, ${longitude}]`);
                     } else {
                         // Update existing marker position and popup content
                         aircraftMarkers[id].setLatLng([latitude, longitude]);
-                        aircraftMarkers[id].getPopup().setContent(infoWindowContent);
+                        aircraftMarkers[id].getPopup().setContent(`
+                            <div class="card text-bg-dark">
+                                <div class="card-img-top">
+                                    <img src="${photoUrl || 'images/default.png'}" class="card-img-top" alt="Aircraft ${callsign}" onerror="this.onerror=null;this.src='images/default.png';">
+                                </div>
+                                <div class="card-body">
+                                    <h5 class="card-title">${callsign || 'Unknown'}</h5>
+                                    <p class="card-text">
+                                        <strong>Country of Origin:</strong> ${origin_country}<br>
+                                        <strong>Altitude:</strong> ${altitude} m<br>
+                                        <strong>Velocity:</strong> ${velocity} m/s<br>
+                                        <strong>Track:</strong> ${true_track}°<br>
+                                        <strong>Latitude:</strong> ${latitude}<br>
+                                        <strong>Longitude:</strong> ${longitude}<br>
+                                    </p>
+                                </div>
+                            </div>
+                        `);
+
+                        // Update the polyline with the new position
+                        aircraftPaths[id].addLatLng([latitude, longitude]);
+                        console.log(`Added new point to polyline for aircraft ${id} at [${latitude}, ${longitude}]`);
                     }
                 });
             });
         }
 
-        function getAircraftPhoto(icao24) {
-            return fetch(`https://api.planespotters.net/pub/photos/icao/${icao24}`)
+        function getAircraftPhoto(hexCode) {
+            const url = `https://api.planespotters.net/pub/photos/hex/${hexCode}`;
+            return fetch(url)
                 .then(response => response.json())
                 .then(data => {
                     if (data.photos && data.photos.length > 0) {
-                        return data.photos[0].thumbnail_large.src;
+                        const photo = data.photos[0];
+                        const photoUrl = photo.thumbnail_large ? photo.thumbnail_large.src : photo.thumbnail.src;
+                        return photoUrl;
                     } else {
                         return null;
                     }
                 })
                 .catch(error => {
-                    console.error('Error fetching aircraft photo:', error);
+                    console.error('Error retrieving aircraft photo:', error);
                     return null;
                 });
         }
 
-        // Initial data fetch
-        fetchAircraftData();
+        fetchAircraftData(); // Initial fetch
+        setInterval(fetchAircraftData, 45000); // Fetch every 10 seconds
 
-        // Periodically update aircraft positions
-        setInterval(fetchAircraftData, 10000);
+        // Hide all polylines if the user clicks on the map
+        map.on('click', function() {
+            Object.keys(polylineVisible).forEach(id => {
+                if (polylineVisible[id]) {
+                    map.removeLayer(aircraftPaths[id]);
+                    polylineVisible[id] = false;
+                }
+            });
+        });
     </script>
 </body>
 </html>
-                                
