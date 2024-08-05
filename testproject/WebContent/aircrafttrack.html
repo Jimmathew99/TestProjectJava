@@ -24,6 +24,15 @@
             width: 100%;
             height: 280px; /* Fixed height */
             object-fit: cover; /* Ensure image covers the container */
+            position: relative;
+        }
+        .card-img-top .spinner-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1;
+            display: none;
         }
         .card-body {
             padding: 1rem;
@@ -43,21 +52,25 @@
         .leaflet-popup-close-button {
             display: none;
         }
-        .airplane-icon-container {
-            width: 64px; /* Increased size */
-            height: 64px; /* Increased size */
+        .airplane-icon {
+            width: 32px;
+            height: 32px;
             background-size: cover;
         }
-        .airplane-icon {
-            width: 100%;
-            height: 100%;
-            background-size: cover;
-            transition: transform 0.3s ease; /* Smooth rotation */
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+            border-width: 0.4em;
         }
     </style>
 </head>
 <body>
     <div id="map"></div>
+    <div class="spinner-container" id="loadingSpinner">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     
@@ -70,13 +83,16 @@
         let aircraftMarkers = {};
 
         function fetchAircraftData() {
-            const lamin = 6.0; // Example values, replace with actual coordinates
+            const lamin = 6.0; // Coordinates covering India
             const lomin = 68.0;
             const lamax = 37.0;
             const lomax = 97.0;
 
             const url = `/testproject/api/aircrafts?lamin=${lamin}&lomin=${lomin}&lamax=${lamax}&lomax=${lomax}`;
             
+            // Show loading spinner
+            document.getElementById('loadingSpinner').style.display = 'block';
+
             fetch(url)
                 .then(response => response.json())
                 .then(data => {
@@ -88,6 +104,10 @@
                 })
                 .catch(error => {
                     console.error('Error fetching aircraft data:', error);
+                })
+                .finally(() => {
+                    // Hide loading spinner
+                    document.getElementById('loadingSpinner').style.display = 'none';
                 });
         }
 
@@ -116,79 +136,71 @@
                             icon: L.divIcon({
                                 className: 'airplane-icon-container',
                                 html: iconHtml,
-                                iconSize: [22, 22], // Increased size
-                                iconAnchor: [32, 32] // Centered icon anchor
+                                iconSize: [32, 32],
+                                iconAnchor: [16, 16]
                             }),
                             title: `Aircraft ${id}`
                         }).addTo(map);
 
                         const infoWindowContent = `
                             <div class="card text-bg-dark">
-                                <img src="${photoUrl || 'images/default.png'}" class="card-img-top" alt="Aircraft ${callsign}" onerror="this.onerror=null;this.src='images/default.png';">
-                                <div class="card-body">
-                                    <h5 class="card-title">Aircraft ${id}</h5>
-                                    <p class="card-text">Origin Country: ${origin_country}</p>
-                                    <p class="card-text">Latitude: ${latitude}</p>
-                                    <p class="card-text">Longitude: ${longitude}</p>
-                                    <p class="card-text">Altitude: ${altitude}</p>
-                                    <p class="card-text">Velocity: ${velocity}</p>
-                                    <p class="card-text">Callsign: ${callsign}</p>
-                                    <p class="card-text">true_track: ${true_track}</p>
+                                <div class="card-img-top">
+                                    <div class="spinner-container">
+                                        <div class="spinner-border" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                    </div>
+                                    <img src="${photoUrl || 'images/default.png'}" class="card-img-top" alt="Aircraft ${callsign}" onerror="this.onerror=null;this.src='images/default.png';">
+                                </div
+                                    <img src="${photoUrl || 'images/default.png'}" class="card-img-top" alt="Aircraft ${callsign}" onerror="this.onerror=null;this.src='images/default.png';">
                                 </div>
-                            </div>`;
+                                <div class="card-body">
+                                    <h5 class="card-title">${callsign || 'Unknown'}</h5>
+                                    <p class="card-text">
+                                        <strong>Country of Origin:</strong> ${origin_country}<br>
+                                        <strong>Altitude:</strong> ${altitude} m<br>
+                                        <strong>Velocity:</strong> ${velocity} m/s<br>
+                                        <strong>Track:</strong> ${true_track}°<br>
+                                        <strong>Latitude:</strong> ${latitude}<br>
+                                        <strong>Longitude:</strong> ${longitude}<br>
+                                    </p>
+                                </div>
+                            </div>
+                        `;
                         marker.bindPopup(infoWindowContent);
 
                         aircraftMarkers[id] = marker;
                     } else {
-                        // Update an existing marker
-                        const marker = aircraftMarkers[id];
-                        const newPosition = [latitude, longitude];
-                        marker.setLatLng(newPosition);
-
-                        marker.setIcon(L.divIcon({
-                            className: 'airplane-icon-container',
-                            html: iconHtml,
-                            iconSize: [22, 22], // Increased size
-                            iconAnchor: [32, 32] // Centered icon anchor
-                        }));
-
-                        marker.setPopupContent(`
-                            <div class="card text-bg-dark">
-                                <img src="${photoUrl || 'images/default.png'}" class="card-img-top" alt="Aircraft ${callsign}" onerror="this.onerror=null;this.src='images/default.png';">
-                                <div class="card-body">
-                                    <h5 class="card-title">Aircraft ${id}</h5>
-                                    <p class="card-text">Latitude: ${latitude}</p>
-                                    <p class="card-text">Longitude: ${longitude}</p>
-                                    <p class="card-text">Altitude: ${altitude}</p>
-                                    <p class="card-text">Velocity: ${velocity}</p>
-                                    <p class="card-text">Callsign: ${callsign}</p>
-                                </div>
-                            </div>`);
+                        // Update existing marker position and popup content
+                        aircraftMarkers[id].setLatLng([latitude, longitude]);
+                        aircraftMarkers[id].getPopup().setContent(infoWindowContent);
                     }
                 });
             });
         }
 
-        function getAircraftPhoto(hexCode) {
-            const url = `https://api.planespotters.net/pub/photos/hex/${hexCode}`;
-            return fetch(url)
+        function getAircraftPhoto(icao24) {
+            return fetch(`https://api.planespotters.net/pub/photos/icao/${icao24}`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.photos && data.photos.length > 0) {
-                        const photo = data.photos[0];
-                        return photo.thumbnail_large ? photo.thumbnail_large.src : photo.thumbnail.src;
+                        return data.photos[0].thumbnail_large.src;
                     } else {
                         return null;
                     }
                 })
                 .catch(error => {
-                    console.error('Error retrieving aircraft photo:', error);
+                    console.error('Error fetching aircraft photo:', error);
                     return null;
                 });
         }
 
-        fetchAircraftData(); // Initial fetch
-        setInterval(fetchAircraftData, 100000); // Fetch every 10 seconds
+        // Initial data fetch
+        fetchAircraftData();
+
+        // Periodically update aircraft positions
+        setInterval(fetchAircraftData, 10000);
     </script>
 </body>
 </html>
+                                
