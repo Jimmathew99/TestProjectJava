@@ -58,9 +58,26 @@
     
     <script>
         let map = L.map('map').setView([20.5937, 78.9629], 5);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(map);
+
+        // Define tile layers
+        const baseLayers = {
+            "OpenStreetMap": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }),
+            "Satellite": L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: '&copy; <a href="https://www.esri.com/en-us/home">Esri</a> &copy; <a href="https://www.openstreetmap.org">OpenStreetMap</a> contributors'
+            }),
+            "CartoDB Positron": L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; <a href="https://www.carto.com/attributions">CARTO</a>'
+            })
+        };
+
+        // Add default layer
+        baseLayers["OpenStreetMap"].addTo(map);
+        
+        // Add layer control
+        L.control.layers(baseLayers).addTo(map);
+        L.control.scale().addTo(map);
 
         let aircraftMarkers = {};
         let aircraftPaths = {};
@@ -87,6 +104,8 @@
                     console.error('Error fetching aircraft data:', error);
                 });
         }
+
+        let currentPolyline = null; // Variable to track the currently visible polyline
 
         function updateAircraftPositions(data) {
             data.states.forEach(aircraft => {
@@ -137,18 +156,19 @@
                         `;
                         marker.bindPopup(infoWindowContent);
 
-                        // Track visibility status
-                        polylineVisible[id] = false;
-
                         marker.on('click', function() {
-                            if (polylineVisible[id]) {
-                                // Hide polyline
-                                map.removeLayer(aircraftPaths[id]);
-                                polylineVisible[id] = false;
+                            if (currentPolyline) {
+                                // Hide the previously visible polyline
+                                map.removeLayer(currentPolyline);
+                            }
+
+                            if (currentPolyline === aircraftPaths[id]) {
+                                // If clicking on the same aircraft, hide its polyline
+                                currentPolyline = null;
                             } else {
-                                // Show polyline
+                                // Show the new polyline
                                 aircraftPaths[id].addTo(map);
-                                polylineVisible[id] = true;
+                                currentPolyline = aircraftPaths[id];
                             }
                         });
 
@@ -186,6 +206,7 @@
                 });
             });
         }
+                
 
         function getAircraftPhoto(hexCode) {
             const url = `https://api.planespotters.net/pub/photos/hex/${hexCode}`;
@@ -207,16 +228,19 @@
         }
 
         fetchAircraftData(); // Initial fetch
-        setInterval(fetchAircraftData, 45000); // Fetch every 10 seconds
+        setInterval(fetchAircraftData, 10000); // Fetch every 45 seconds
 
-        // Hide all polylines if the user clicks on the map
+        // Hide all polylines initially
+        Object.keys(aircraftPaths).forEach(id => {
+            map.removeLayer(aircraftPaths[id]);
+        });
+
+        // Hide polyline when clicking on the map
         map.on('click', function() {
-            Object.keys(polylineVisible).forEach(id => {
-                if (polylineVisible[id]) {
-                    map.removeLayer(aircraftPaths[id]);
-                    polylineVisible[id] = false;
-                }
-            });
+            if (currentPolyline) {
+                map.removeLayer(currentPolyline);
+                currentPolyline = null;
+            }
         });
     </script>
 </body>
